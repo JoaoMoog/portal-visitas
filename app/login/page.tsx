@@ -61,10 +61,10 @@ export default function LoginPage() {
       </Box>
       <Stack direction="row" spacing={2} mt={2}>
         <Button variant="outlined" onClick={() => handleDemo('voluntario')}>
-          Login demo voluntário
+          Login voluntário
         </Button>
         <Button variant="outlined" onClick={() => handleDemo('admin')}>
-          Login demo admin
+          Login admin
         </Button>
       </Stack>
       <Snackbar
