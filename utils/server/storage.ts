@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import bcrypt from 'bcryptjs';
-import { kv } from '@vercel/kv';
+import { get as edgeGet } from '@vercel/edge-config';
 import { ADMIN_EMAIL } from '../constants';
 import { Usuario, Visita } from '@/types/models';
 
@@ -28,8 +28,10 @@ let DATA_DIR =
   process.env.DATA_DIR ??
   (process.env.VERCEL ? path.join('/tmp', 'portal-visitas') : path.join(process.cwd(), 'data'));
 let DB_FILE = process.env.DATA_FILE ?? path.join(DATA_DIR, 'db.json');
-const USE_KV = Boolean(process.env.KV_REST_API_URL || process.env.KV_URL);
-const KV_KEY = process.env.KV_KEY ?? 'portal-visitas:db';
+const EDGE_CONFIG_ID = process.env.EDGE_CONFIG_ID ?? process.env.EDGE_CONFIG;
+const EDGE_CONFIG_TOKEN = process.env.EDGE_CONFIG_TOKEN;
+const EDGE_CONFIG_KEY = process.env.EDGE_CONFIG_KEY ?? 'portal-visitas:db';
+const USE_EDGE_CONFIG = Boolean(EDGE_CONFIG_ID);
 const ADMIN_DEFAULT_PASSWORD = 'admin123';
 
 const defaultVisitas: Visita[] = [
@@ -48,7 +50,7 @@ const defaultVisitas: Visita[] = [
 ];
 
 const ensureDir = async () => {
-  if (USE_KV) return;
+  if (USE_EDGE_CONFIG) return;
   try {
     await fs.mkdir(DATA_DIR, { recursive: true });
   } catch (error: any) {
@@ -65,7 +67,7 @@ const ensureDir = async () => {
 };
 
 const fileExists = async (file: string) => {
-  if (USE_KV) return false;
+  if (USE_EDGE_CONFIG) return false;
   try {
     await fs.access(file);
     return true;
@@ -94,11 +96,11 @@ const buildDefaultDb = async (): Promise<DbSchema> => {
 };
 
 const seedDb = async () => {
-  if (USE_KV) {
-    const exists = await kv.exists(KV_KEY);
-    if (exists) return;
+  if (USE_EDGE_CONFIG) {
+    const existing = await edgeGet<DbSchema | null>(EDGE_CONFIG_KEY);
+    if (existing) return;
     const initial = await buildDefaultDb();
-    await kv.set(KV_KEY, initial);
+    await writeEdgeConfig(initial);
     return;
   }
 
@@ -141,17 +143,17 @@ const ensureAdminUser = async (db: DbSchema) => {
 
 export const readDb = async (): Promise<DbSchema> => {
   await seedDb();
-  if (USE_KV) {
+  if (USE_EDGE_CONFIG) {
     try {
-      const stored = await kv.get<DbSchema>(KV_KEY);
+      const stored = await edgeGet<DbSchema | null>(EDGE_CONFIG_KEY);
       if (!stored) {
         const fallback = await buildDefaultDb();
-        await kv.set(KV_KEY, fallback);
+        await writeEdgeConfig(fallback);
         return fallback;
       }
       return await ensureAdminUser(stored);
     } catch (error) {
-      console.error('[storage] erro lendo DB (KV)', KV_KEY, error);
+      console.error('[storage] erro lendo DB (Edge Config)', EDGE_CONFIG_KEY, error);
       throw error;
     }
   }
@@ -167,15 +169,9 @@ export const readDb = async (): Promise<DbSchema> => {
 
 export const writeDb = async (db: DbSchema) => {
   await ensureDir();
-  if (USE_KV) {
-    try {
-      await kv.set(KV_KEY, db);
-      console.log('[storage] wrote DB to KV key', KV_KEY);
-      return;
-    } catch (error) {
-      console.error('[storage] erro escrevendo DB (KV)', KV_KEY, error);
-      throw error;
-    }
+  if (USE_EDGE_CONFIG) {
+    await writeEdgeConfig(db);
+    return;
   }
   try {
     await fs.writeFile(DB_FILE, JSON.stringify(db, null, 2), 'utf8');
@@ -191,3 +187,32 @@ export const pruneExpiredSessions = (db: DbSchema) => {
   db.sessions = db.sessions.filter((s) => s.exp > now);
   db.resetTokens = db.resetTokens.filter((t) => t.exp > now);
 };
+
+async function writeEdgeConfig(db: DbSchema) {
+  if (!EDGE_CONFIG_ID || !EDGE_CONFIG_TOKEN) {
+    throw new Error('EDGE_CONFIG_ID e EDGE_CONFIG_TOKEN sao obrigatorios para persistencia.');
+  }
+  const response = await fetch(`https://api.vercel.com/v1/edge-config/${EDGE_CONFIG_ID}/items`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${EDGE_CONFIG_TOKEN}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      items: [
+        {
+          operation: 'upsert',
+          key: EDGE_CONFIG_KEY,
+          value: db
+        }
+      ]
+    })
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    console.error('[storage] erro escrevendo Edge Config', response.status, text);
+    throw new Error(`Falha ao escrever Edge Config (${response.status})`);
+  }
+  console.log('[storage] wrote DB to Edge Config key', EDGE_CONFIG_KEY);
+}
