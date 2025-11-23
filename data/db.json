@@ -1,13 +1,5 @@
 {
   "usuarios": [
-    {
-      "id": "admin-user",
-      "nome": "Admin",
-      "email": "admin@admin.com",
-      "telefone": "",
-      "senhaHash": "$2a$10$6BFYJ5fVL1mdmuMl4Jc8J.DTMZAHzw8Agl/YAwuKVxnAPxFTwfdX2",
-      "role": "admin"
-    }
   ],
   "visitas": [],
   "sessions": [],
