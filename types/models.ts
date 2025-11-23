@@ -4,6 +4,7 @@ export type Usuario = {
   id: string;
   nome: string;
   email: string;
+  telefone: string;
   senhaHash: string;
   role: Role;
 };

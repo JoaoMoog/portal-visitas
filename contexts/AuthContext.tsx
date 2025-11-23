@@ -18,6 +18,7 @@ import {
   atualizarSenha,
   consumirTokenReset,
   seedInitialData,
+  nomeJaCadastrado,
   setUsuarioLogado
 } from '@/utils/localStorage';
 
@@ -25,7 +26,12 @@ export type AuthContextType = {
   usuario: Usuario | null;
   carregando: boolean;
   login: (email: string, senha: string) => Promise<{ ok: boolean; erro?: string }>;
-  registrar: (nome: string, email: string, senha: string) => Promise<{ ok: boolean; erro?: string }>;
+  registrar: (
+    nome: string,
+    email: string,
+    telefone: string,
+    senha: string
+  ) => Promise<{ ok: boolean; erro?: string }>;
   solicitarReset: (email: string) => Promise<{ ok: boolean; erro?: string; token?: string }>;
   resetarSenha: (email: string, token: string, novaSenha: string) => Promise<{ ok: boolean; erro?: string }>;
   logout: () => void;
@@ -73,19 +79,40 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return { ok: true };
   };
 
-  const registrar = async (nome: string, email: string, senha: string) => {
+  const registrar = async (nome: string, email: string, telefone: string, senha: string) => {
     const emailNormalizado = email.trim();
-    if (!nome || !emailNormalizado || !senha) {
+    const nomeNormalizado = nome.trim();
+    const telefoneNumeros = telefone.replace(/\D/g, '');
+
+    if (!nomeNormalizado || !emailNormalizado || !senha || !telefoneNumeros) {
       return { ok: false, erro: 'Preencha todos os campos.' };
     }
     if (senha.length < 6) return { ok: false, erro: 'Senha deve ter pelo menos 6 caracteres.' };
 
     if (emailJaCadastrado(emailNormalizado)) {
-      return { ok: false, erro: 'Email já cadastrado.' };
+      return { ok: false, erro: 'Email ja cadastrado.' };
+    }
+
+    if (nomeNormalizado.toLowerCase() === 'admin') {
+      return { ok: false, erro: 'Nome de usuario "admin" nao permitido.' };
+    }
+
+    if (nomeJaCadastrado(nomeNormalizado)) {
+      return { ok: false, erro: 'Nome de usuario ja cadastrado.' };
+    }
+
+    if (telefoneNumeros.length < 10) {
+      return { ok: false, erro: 'Informe um telefone (WhatsApp) valido com DDD.' };
     }
 
     const role: Role = emailNormalizado.toLowerCase() === ADMIN_EMAIL ? 'admin' : 'voluntario';
-    const novo = await registrarUsuario(nome.trim(), emailNormalizado.toLowerCase(), senha, role);
+    const novo = await registrarUsuario(
+      nomeNormalizado,
+      emailNormalizado.toLowerCase(),
+      telefoneNumeros,
+      senha,
+      role
+    );
     setUsuario(novo);
     setUsuarioLogado(novo);
     return { ok: true };

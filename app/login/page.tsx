@@ -30,6 +30,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [nome, setNome] = useState('');
+  const [telefone, setTelefone] = useState('');
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
   const [loadingLogin, setLoadingLogin] = useState(false);
@@ -61,7 +62,7 @@ export default function LoginPage() {
     setErro('');
     setSucesso('');
     setLoadingRegistro(true);
-    const resultado = await registrar(nome, email, senha);
+    const resultado = await registrar(nome, email, telefone, senha);
     setLoadingRegistro(false);
     if (!resultado.ok) {
       setErro(resultado.erro ?? 'Não foi possível registrar.');
@@ -99,8 +100,7 @@ export default function LoginPage() {
           Visitas leves, coloridas e cheias de alegria para transformar corredores em sorrisos.
         </Typography>
         <Typography variant="h6" color="text.secondary" sx={{ maxWidth: 520 }}>
-          Portal único para administração e voluntários organizarem visitas e espalharem acolhimento.
-          Quem usar o email {ADMIN_EMAIL} se torna administrador.
+          Portal único para os voluntários organizarem visitas.
         </Typography>
       </Box>
 
@@ -154,6 +154,15 @@ export default function LoginPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    required
+                    fullWidth
+                  />
+                  <TextField
+                    label="Telefone (WhatsApp)"
+                    type="tel"
+                    placeholder="(11) 98888-7777"
+                    value={telefone}
+                    onChange={(e) => setTelefone(e.target.value)}
                     required
                     fullWidth
                   />

@@ -191,7 +191,9 @@ export const seedInitialData = () => {
 
 export const getUsuarios = (): Usuario[] => {
   seedInitialData();
-  return getItem<Usuario[]>(USUARIOS_KEY) ?? [];
+  const usuarios = getItem<Usuario[]>(USUARIOS_KEY) ?? [];
+  // Garante propriedades que podem faltar em dados antigos
+  return usuarios.map((u) => ({ ...u, telefone: u.telefone ?? '' }));
 };
 
 export const saveUsuarios = (usuarios: Usuario[]) => {
@@ -224,6 +226,11 @@ export const emailJaCadastrado = (email: string): boolean => {
   return usuarios.some((u) => u.email.toLowerCase() === email.toLowerCase());
 };
 
+export const nomeJaCadastrado = (nome: string): boolean => {
+  const usuarios = getUsuarios();
+  return usuarios.some((u) => u.nome.trim().toLowerCase() === nome.trim().toLowerCase());
+};
+
 export const gerarTokenReset = (email: string): ResetToken | null => {
   const usuarios = getUsuarios();
   const existe = usuarios.find((u) => u.email.toLowerCase() === email.toLowerCase());
@@ -249,13 +256,20 @@ export const consumirTokenReset = (email: string, token: string) => {
   saveResetTokens(filtrados);
 };
 
-export const registrarUsuario = async (nome: string, email: string, senha: string, role: Role): Promise<Usuario> => {
+export const registrarUsuario = async (
+  nome: string,
+  email: string,
+  telefone: string,
+  senha: string,
+  role: Role
+): Promise<Usuario> => {
   const usuarios = getUsuarios();
   const senhaHash = await hashPassword(senha);
   const novo: Usuario = {
     id: crypto.randomUUID ? crypto.randomUUID() : `user-${Date.now()}`,
     nome,
     email,
+    telefone,
     senhaHash,
     role
   };
