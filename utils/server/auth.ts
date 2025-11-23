@@ -85,25 +85,23 @@ export const registerUser = async (nome: string, email: string, telefone: string
   const db = await readDb();
   pruneExpiredSessions(db);
 
-  if (emailLower === ADMIN_EMAIL.toLowerCase()) {
-    console.warn('[auth/registerUser] tentativa de registrar admin bloqueada');
-    return { ok: false, erro: 'Admin ja existe.' };
-  }
   if (db.usuarios.some((u) => u.email.toLowerCase() === emailLower)) {
     console.warn('[auth/registerUser] email duplicado', emailLower);
     return { ok: false, erro: 'Email ja cadastrado.' };
   }
   if (senha.length < 6) return { ok: false, erro: 'Senha deve ter pelo menos 6 caracteres.' };
-  if (!telefone.replace(/\D/g, '')) return { ok: false, erro: 'Informe telefone valido.' };
+  const telefoneDigits = telefone.replace(/\D/g, '');
+  if (!telefoneDigits) return { ok: false, erro: 'Informe telefone valido.' };
+  if (telefoneDigits.length > 11) return { ok: false, erro: 'Telefone deve ter no maximo 11 digitos.' };
 
   const senhaHash = await hashPassword(senha);
   const novo: Usuario = {
     id: crypto.randomUUID(),
     nome: nome.trim(),
     email: emailLower,
-    telefone: telefone.replace(/\D/g, ''),
+    telefone: telefoneDigits,
     senhaHash,
-    role: emailLower === ADMIN_EMAIL ? 'admin' : 'voluntario'
+    role: emailLower === ADMIN_EMAIL.toLowerCase() ? 'admin' : 'voluntario'
   };
   db.usuarios.push(novo);
   await writeDb(db);

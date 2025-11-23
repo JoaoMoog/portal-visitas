@@ -30,6 +30,7 @@ let DATA_DIR =
 let DB_FILE = process.env.DATA_FILE ?? path.join(DATA_DIR, 'db.json');
 const USE_KV = Boolean(process.env.KV_REST_API_URL || process.env.KV_URL);
 const KV_KEY = process.env.KV_KEY ?? 'portal-visitas:db';
+const ADMIN_DEFAULT_PASSWORD = 'admin123';
 
 const defaultVisitas: Visita[] = [
   {
@@ -74,8 +75,7 @@ const fileExists = async (file: string) => {
 };
 
 const buildDefaultDb = async (): Promise<DbSchema> => {
-  const adminPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'admin123';
-  const senhaHash = await bcrypt.hash(adminPassword, 10);
+  const senhaHash = await bcrypt.hash(ADMIN_DEFAULT_PASSWORD, 10);
   const admin: Usuario = {
     id: 'admin-user',
     nome: 'Admin',
@@ -111,11 +111,10 @@ const seedDb = async () => {
 
 const ensureAdminUser = async (db: DbSchema) => {
   const adminEmail = ADMIN_EMAIL.toLowerCase();
-  const adminPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'admin123';
-  const senhaHash = await bcrypt.hash(adminPassword, 10);
 
   const idx = db.usuarios.findIndex((u) => u.email.toLowerCase() === adminEmail);
   if (idx === -1) {
+    const senhaHash = await bcrypt.hash(ADMIN_DEFAULT_PASSWORD, 10);
     const admin: Usuario = {
       id: 'admin-user',
       nome: 'Admin',
@@ -132,9 +131,11 @@ const ensureAdminUser = async (db: DbSchema) => {
 
   // sempre sincroniza a senha com a env e garante role admin
   const existing = db.usuarios[idx];
-  db.usuarios[idx] = { ...existing, senhaHash, role: 'admin', email: ADMIN_EMAIL };
-  await writeDb(db);
-  console.warn('[storage] admin existente; senha/role sincronizados com env');
+  if (existing.role !== 'admin' || existing.email !== ADMIN_EMAIL) {
+    db.usuarios[idx] = { ...existing, role: 'admin', email: ADMIN_EMAIL };
+    await writeDb(db);
+    console.warn('[storage] admin existente; role/email sincronizados');
+  }
   return db;
 };
 
