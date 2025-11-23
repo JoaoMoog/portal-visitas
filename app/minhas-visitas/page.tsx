@@ -16,7 +16,7 @@ export default function MinhasVisitasPage() {
       <Stack spacing={3}>
         <Typography variant="h4">Minhas visitas</Typography>
         {minhas.length === 0 ? (
-          <Alert severity="info">Você ainda não está inscrito em nenhuma visita.</Alert>
+          <Alert severity="info">Voce ainda nao esta inscrito em nenhuma visita.</Alert>
         ) : (
           <Grid container spacing={2}>
             {minhas.map((visita) => (

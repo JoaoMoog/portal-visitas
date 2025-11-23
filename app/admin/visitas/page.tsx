@@ -6,6 +6,7 @@ import {
   Box,
   Button,
   Dialog,
+  DialogActions,
   DialogContent,
   DialogTitle,
   Stack,
@@ -24,9 +25,10 @@ import { getUsuarios } from '@/utils/localStorage';
 import { Usuario } from '@/types/models';
 
 export default function AdminVisitasPage() {
-  const { visitas, cancelarVisita } = useVisitas();
+  const { visitas, cancelarVisita, deletarVisita } = useVisitas();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [visitaSelecionada, setVisitaSelecionada] = useState<string | null>(null);
+  const [visitaParaExcluir, setVisitaParaExcluir] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -51,14 +53,14 @@ export default function AdminVisitasPage() {
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>Título</TableCell>
+                  <TableCell>Titulo</TableCell>
                   <TableCell>Hospital</TableCell>
                   <TableCell>Data</TableCell>
-                  <TableCell>Horário</TableCell>
+                  <TableCell>Horario</TableCell>
                   <TableCell>Limite</TableCell>
                   <TableCell>Inscritos</TableCell>
                   <TableCell>Status</TableCell>
-                  <TableCell>Ações</TableCell>
+                  <TableCell>Acoes</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -88,6 +90,14 @@ export default function AdminVisitasPage() {
                         >
                           Cancelar visita
                         </Button>
+                        <Button
+                          size="small"
+                          color="error"
+                          variant="contained"
+                          onClick={() => setVisitaParaExcluir(visita.id)}
+                        >
+                          Excluir
+                        </Button>
                       </Stack>
                     </TableCell>
                   </TableRow>
@@ -115,6 +125,25 @@ export default function AdminVisitasPage() {
               <Typography>Nenhuma visita selecionada.</Typography>
             )}
           </DialogContent>
+        </Dialog>
+        <Dialog open={!!visitaParaExcluir} onClose={() => setVisitaParaExcluir(null)}>
+          <DialogTitle>Excluir visita</DialogTitle>
+          <DialogContent>
+            <Typography>Tem certeza? Esta ação removerá a visita e suas inscrições.</Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setVisitaParaExcluir(null)}>Cancelar</Button>
+            <Button
+              color="error"
+              variant="contained"
+              onClick={() => {
+                if (visitaParaExcluir) deletarVisita(visitaParaExcluir);
+                setVisitaParaExcluir(null);
+              }}
+            >
+              Excluir
+            </Button>
+          </DialogActions>
         </Dialog>
       </Stack>
     </RequireAdmin>

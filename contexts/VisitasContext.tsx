@@ -13,10 +13,12 @@ import {
 export type VisitasContextType = {
   visitas: Visita[];
   adicionarVisita: (visita: Visita) => void;
+  adicionarVisitas: (novas: Visita[]) => void;
   atualizarVisita: (visitaAtualizada: Visita) => void;
   cancelarVisita: (id: string) => void;
+  deletarVisita: (id: string) => void;
   inscrever: (usuarioId: string, visitaId: string) => void;
-  removerInscricao: (usuarioId: string, visitaId: string) => void;
+  removerInscricao: (usuarioId: string, visitaId: string, motivo: string) => void;
 };
 
 const VisitasContext = createContext<VisitasContextType | undefined>(undefined);
@@ -36,6 +38,15 @@ export const VisitasProvider = ({ children }: { children: React.ReactNode }) => 
     });
   };
 
+  const adicionarVisitas = (novasVisitas: Visita[]) => {
+    if (novasVisitas.length === 0) return;
+    setVisitas((prev) => {
+      const novas = [...prev, ...novasVisitas];
+      saveVisitas(novas);
+      return novas;
+    });
+  };
+
   const atualizarVisita = (visitaAtualizada: Visita) => {
     setVisitas((prev) => {
       const novas = prev.map((v) => (v.id === visitaAtualizada.id ? visitaAtualizada : v));
@@ -49,18 +60,35 @@ export const VisitasProvider = ({ children }: { children: React.ReactNode }) => 
     setVisitas([...novas]);
   };
 
+  const deletarVisita = (id: string) => {
+    setVisitas((prev) => {
+      const novas = prev.filter((v) => v.id !== id);
+      saveVisitas(novas);
+      return novas;
+    });
+  };
+
   const inscrever = (usuarioId: string, visitaId: string) => {
     const novas = inscreverUsuarioEmVisita(usuarioId, visitaId);
     setVisitas([...novas]);
   };
 
-  const removerInscricao = (usuarioId: string, visitaId: string) => {
-    const novas = cancelarInscricao(usuarioId, visitaId);
+  const removerInscricao = (usuarioId: string, visitaId: string, motivo: string) => {
+    const novas = cancelarInscricao(usuarioId, visitaId, motivo);
     setVisitas([...novas]);
   };
 
   const value = useMemo(
-    () => ({ visitas, adicionarVisita, atualizarVisita, cancelarVisita: cancelarVisitaHandler, inscrever, removerInscricao }),
+    () => ({
+      visitas,
+      adicionarVisita,
+      adicionarVisitas,
+      atualizarVisita,
+      cancelarVisita: cancelarVisitaHandler,
+      deletarVisita,
+      inscrever,
+      removerInscricao
+    }),
     [visitas]
   );
 

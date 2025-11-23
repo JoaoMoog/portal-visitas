@@ -16,7 +16,8 @@ export default function HomePage() {
   const hospitais = useMemo(() => Array.from(new Set(visitas.map((v) => v.hospital))), [visitas]);
 
   const visitasFiltradas = useMemo(() => {
-    return visitas.filter((v) => {
+    const ativas = visitas.filter((v) => v.status === 'ativa');
+    return ativas.filter((v) => {
       const matchHospital = filtroHospital ? v.hospital === filtroHospital : true;
       const matchData = filtroData ? v.data === filtroData : true;
       return matchHospital && matchData;
@@ -26,7 +27,7 @@ export default function HomePage() {
   return (
     <RequireAuth>
       <Stack spacing={3}>
-        <Typography variant="h4">Visitas disponíveis</Typography>
+        <Typography variant="h4">Visitas disponiveis</Typography>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
           <TextField
             select
@@ -62,7 +63,7 @@ export default function HomePage() {
             ))}
           </Grid>
         )}
-        {!usuario && <Alert severity="warning">É necessário estar logado para se inscrever.</Alert>}
+        {!usuario && <Alert severity="warning">E necessario estar logado para se inscrever.</Alert>}
       </Stack>
     </RequireAuth>
   );

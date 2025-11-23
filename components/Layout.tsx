@@ -1,6 +1,6 @@
 'use client';
 
-import { AppBar, Toolbar, Typography, Button, Box, Container } from '@mui/material';
+import { AppBar, Toolbar, Typography, Button, Box, Container, Chip, Stack } from '@mui/material';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,16 +27,26 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                 Portal de Visitas
               </Typography>
               {usuario?.role === 'admin' && (
-                <Button color="inherit" component={Link} href="/admin/visitas">
-                  Admin
-                </Button>
+                <>
+                  <Button color="inherit" component={Link} href="/admin">
+                    Dashboard
+                  </Button>
+                  <Button color="inherit" component={Link} href="/admin/visitas">
+                    Visitas
+                  </Button>
+                </>
               )}
               <Button color="inherit" component={Link} href="/minhas-visitas">
                 Minhas visitas
               </Button>
             </Box>
             <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-              {usuario && <Typography>{usuario.nome}</Typography>}
+              {usuario && (
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Typography>{usuario.nome}</Typography>
+                  {usuario.role === 'admin' && <Chip label="Admin" color="secondary" size="small" />}
+                </Stack>
+              )}
               <Button color="inherit" onClick={handleLogout}>
                 Sair
               </Button>

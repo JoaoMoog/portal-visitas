@@ -9,7 +9,33 @@ const theme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#1976d2'
+      main: '#e11d48'
+    },
+    secondary: {
+      main: '#f59e0b'
+    },
+    background: {
+      default: '#f2f5f8'
+    }
+  },
+  typography: {
+    fontFamily: "'Space Grotesk', 'Inter', system-ui, -apple-system, sans-serif",
+    button: {
+      textTransform: 'none',
+      fontWeight: 700
+    }
+  },
+  shape: {
+    borderRadius: 12
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          paddingInline: 18,
+          paddingBlock: 10
+        }
+      }
     }
   }
 });

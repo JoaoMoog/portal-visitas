@@ -4,11 +4,17 @@ export type Usuario = {
   id: string;
   nome: string;
   email: string;
-  senha: string;
+  senhaHash: string;
   role: Role;
 };
 
 export type VisitaStatus = 'ativa' | 'cancelada';
+
+export type CancelamentoInscricao = {
+  usuarioId: string;
+  motivo: string;
+  dataIso: string;
+};
 
 export type Visita = {
   id: string;
@@ -20,4 +26,10 @@ export type Visita = {
   limiteVagas: number;
   inscritosIds: string[];
   status: VisitaStatus;
+  cancelamentos: CancelamentoInscricao[];
+  recorrencia?: {
+    ocorrencias: number;
+    intervaloDias: number;
+    diaDaSemana?: number; // 0=domingo ... 6=sabado
+  };
 };
