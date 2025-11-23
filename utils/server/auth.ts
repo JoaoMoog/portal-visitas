@@ -86,6 +86,7 @@ export const registerUser = async (nome: string, email: string, telefone: string
   pruneExpiredSessions(db);
 
   if (db.usuarios.some((u) => u.email.toLowerCase() === emailLower)) {
+    console.warn('[auth/registerUser] email duplicado', emailLower);
     return { ok: false, erro: 'Email ja cadastrado.' };
   }
   if (senha.length < 6) return { ok: false, erro: 'Senha deve ter pelo menos 6 caracteres.' };

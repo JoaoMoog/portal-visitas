@@ -23,7 +23,9 @@ export type DbSchema = {
   resetTokens: ResetToken[];
 };
 
-let DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), 'data');
+let DATA_DIR =
+  process.env.DATA_DIR ??
+  (process.env.VERCEL ? path.join('/tmp', 'portal-visitas') : path.join(process.cwd(), 'data'));
 let DB_FILE = process.env.DATA_FILE ?? path.join(DATA_DIR, 'db.json');
 
 const defaultVisitas: Visita[] = [
@@ -141,6 +143,7 @@ export const writeDb = async (db: DbSchema) => {
   await ensureDir();
   try {
     await fs.writeFile(DB_FILE, JSON.stringify(db, null, 2), 'utf8');
+    console.log('[storage] wrote DB to', DB_FILE);
   } catch (error) {
     console.error('[storage] erro escrevendo DB', DB_FILE, error);
     throw error;

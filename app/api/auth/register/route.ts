@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { registerUser } from '@/utils/server/auth';
 
 export async function POST(req: Request) {
+  console.log('[auth/register] nova requisicao');
   const body = await req.json().catch((error) => {
     console.error('[auth/register] erro parse json', error);
     return null;
@@ -28,3 +29,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
   }
 }
+export const runtime = 'nodejs';
