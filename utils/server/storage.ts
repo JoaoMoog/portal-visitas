@@ -128,11 +128,33 @@ const seedDb = async () => {
   await fs.writeFile(DB_FILE, JSON.stringify(initial, null, 2), 'utf8');
 };
 
+const ensureAdminUser = async (db: DbSchema) => {
+  const adminEmail = ADMIN_EMAIL.toLowerCase();
+  const hasAdmin = db.usuarios.some((u) => u.email.toLowerCase() === adminEmail && u.role === 'admin');
+  if (hasAdmin) return db;
+
+  const adminPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'admin123';
+  const senhaHash = await bcrypt.hash(adminPassword, 10);
+  const admin: Usuario = {
+    id: 'admin-user',
+    nome: 'Admin',
+    email: ADMIN_EMAIL,
+    telefone: '',
+    senhaHash,
+    role: 'admin'
+  };
+  db.usuarios.push(admin);
+  await writeDb(db);
+  console.warn('[storage] admin ausente; criado com senha de ambiente');
+  return db;
+};
+
 export const readDb = async (): Promise<DbSchema> => {
   await seedDb();
   try {
     const raw = await fs.readFile(DB_FILE, 'utf8');
-    return JSON.parse(raw) as DbSchema;
+    const db = JSON.parse(raw) as DbSchema;
+    return await ensureAdminUser(db);
   } catch (error) {
     console.error('[storage] erro lendo DB', DB_FILE, error);
     throw error;
