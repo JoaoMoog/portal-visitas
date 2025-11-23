@@ -151,6 +151,9 @@ export default function AdminDashboardPage() {
                       <Avatar sx={{ bgcolor: '#0d9488', width: 36, height: 36 }}>{stat.usuario.nome[0]}</Avatar>
                       <Stack flex={1}>
                         <Typography fontWeight={600}>{stat.usuario.nome}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          WhatsApp: {stat.usuario.telefone || 'não informado'}
+                        </Typography>
                         <LinearProgress
                           variant="determinate"
                           value={maxParticipacoes ? (stat.participacoes / maxParticipacoes) * 100 : 0}
@@ -213,6 +216,11 @@ export default function AdminDashboardPage() {
                     <Typography variant="body2" color="text.secondary">
                       {usuario ? usuario.nome : 'Voluntario'} • {isNaN(data.getTime()) ? 'Data indefinida' : data.toLocaleString()}
                     </Typography>
+                    {usuario?.telefone && (
+                      <Typography variant="body2" color="text.secondary">
+                        WhatsApp: {usuario.telefone}
+                      </Typography>
+                    )}
                     <Typography variant="body2">Motivo: {cancelamento.motivo}</Typography>
                   </Stack>
                 );

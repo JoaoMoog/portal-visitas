@@ -116,7 +116,18 @@ export default function AdminVisitasPage() {
                   <ul>
                     {visitaDialog.inscritosIds.map((id) => {
                       const inscrito = usuarios.find((u) => u.id === id);
-                      return <li key={id}>{inscrito ? inscrito.nome : `Usuário ${id}`}</li>;
+                      return (
+                        <li key={id}>
+                          {inscrito ? (
+                            <>
+                              {inscrito.nome}
+                              {inscrito.telefone ? ` • WhatsApp: ${inscrito.telefone}` : ''}
+                            </>
+                          ) : (
+                            `Usuário ${id}`
+                          )}
+                        </li>
+                      );
                     })}
                   </ul>
                 )}
