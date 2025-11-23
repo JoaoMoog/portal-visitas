@@ -1,147 +1,105 @@
 'use client';
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { Role, Usuario } from '@/types/models';
-import {
-  ADMIN_EMAIL,
-  emailJaCadastrado,
-  getUsuarioLogado,
-  getUsuarios,
-  hashPassword,
-  isLoginBloqueado,
-  limparFalhasLogin,
-  migrateSenhasPlanas,
-  registrarFalhaLogin,
-  registrarUsuario,
-  gerarTokenReset,
-  validarTokenReset,
-  atualizarSenha,
-  consumirTokenReset,
-  seedInitialData,
-  nomeJaCadastrado,
-  setUsuarioLogado
-} from '@/utils/localStorage';
+import { UsuarioPublico } from '@/types/models';
 
 export type AuthContextType = {
-  usuario: Usuario | null;
+  usuario: UsuarioPublico | null;
   carregando: boolean;
   login: (email: string, senha: string) => Promise<{ ok: boolean; erro?: string }>;
-  registrar: (
-    nome: string,
-    email: string,
-    telefone: string,
-    senha: string
-  ) => Promise<{ ok: boolean; erro?: string }>;
+  registrar: (nome: string, email: string, telefone: string, senha: string) => Promise<{ ok: boolean; erro?: string }>;
   solicitarReset: (email: string) => Promise<{ ok: boolean; erro?: string; token?: string }>;
   resetarSenha: (email: string, token: string, novaSenha: string) => Promise<{ ok: boolean; erro?: string }>;
-  logout: () => void;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const fetchJson = async <T,>(input: RequestInfo | URL, init?: RequestInit): Promise<T> => {
+  const res = await fetch(input, { credentials: 'include', ...init });
+  const data = (await res.json().catch(() => ({}))) as T & { error?: string };
+  if (!res.ok) {
+    const erro = (data as { error?: string }).error || 'Erro inesperado';
+    throw new Error(erro);
+  }
+  return data;
+};
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [usuario, setUsuario] = useState<Usuario | null>(null);
+  const [usuario, setUsuario] = useState<UsuarioPublico | null>(null);
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
     const init = async () => {
-      seedInitialData();
-      await migrateSenhasPlanas();
-      const logged = getUsuarioLogado();
-      if (logged) setUsuario(logged);
-      setCarregando(false);
+      try {
+        const data = await fetchJson<{ usuario: UsuarioPublico | null }>('/api/auth/me');
+        setUsuario(data.usuario);
+      } catch {
+        setUsuario(null);
+      } finally {
+        setCarregando(false);
+      }
     };
     void init();
   }, []);
 
   const login = async (email: string, senha: string) => {
-    const emailNormalizado = email.trim().toLowerCase();
-    const { bloqueado, restanteMs } = isLoginBloqueado(emailNormalizado);
-    if (bloqueado) {
-      const minutos = Math.ceil(restanteMs / 60000);
-      return { ok: false, erro: `Muitas tentativas. Tente novamente em ${minutos} min.` };
+    try {
+      const data = await fetchJson<{ ok: boolean; usuario: UsuarioPublico }>('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, senha })
+      });
+      setUsuario(data.usuario);
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, erro: (error as Error).message };
     }
-
-    const usuarios = getUsuarios();
-    const found = usuarios.find((u) => u.email.toLowerCase() === emailNormalizado);
-    if (!found) {
-      registrarFalhaLogin(emailNormalizado);
-      return { ok: false, erro: 'Credenciais invalidas.' };
-    }
-    const senhaHash = await hashPassword(senha);
-    if (found.senhaHash !== senhaHash) {
-      registrarFalhaLogin(emailNormalizado);
-      return { ok: false, erro: 'Credenciais invalidas.' };
-    }
-    limparFalhasLogin(emailNormalizado);
-    setUsuario(found);
-    setUsuarioLogado(found);
-    return { ok: true };
   };
 
   const registrar = async (nome: string, email: string, telefone: string, senha: string) => {
-    const emailNormalizado = email.trim();
-    const nomeNormalizado = nome.trim();
-    const telefoneNumeros = telefone.replace(/\D/g, '');
-
-    if (!nomeNormalizado || !emailNormalizado || !senha || !telefoneNumeros) {
-      return { ok: false, erro: 'Preencha todos os campos.' };
+    try {
+      const data = await fetchJson<{ ok: boolean; usuario: UsuarioPublico }>('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome, email, telefone, senha })
+      });
+      setUsuario(data.usuario);
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, erro: (error as Error).message };
     }
-    if (senha.length < 6) return { ok: false, erro: 'Senha deve ter pelo menos 6 caracteres.' };
-
-    if (emailJaCadastrado(emailNormalizado)) {
-      return { ok: false, erro: 'Email ja cadastrado.' };
-    }
-
-    if (nomeNormalizado.toLowerCase() === 'admin') {
-      return { ok: false, erro: 'Nome de usuario "admin" nao permitido.' };
-    }
-
-    if (nomeJaCadastrado(nomeNormalizado)) {
-      return { ok: false, erro: 'Nome de usuario ja cadastrado.' };
-    }
-
-    if (telefoneNumeros.length < 10) {
-      return { ok: false, erro: 'Informe um telefone (WhatsApp) valido com DDD.' };
-    }
-
-    const role: Role = emailNormalizado.toLowerCase() === ADMIN_EMAIL ? 'admin' : 'voluntario';
-    const novo = await registrarUsuario(
-      nomeNormalizado,
-      emailNormalizado.toLowerCase(),
-      telefoneNumeros,
-      senha,
-      role
-    );
-    setUsuario(novo);
-    setUsuarioLogado(novo);
-    return { ok: true };
   };
 
   const solicitarReset = async (email: string) => {
-    const token = gerarTokenReset(email);
-    if (!token) return { ok: false, erro: 'Email não encontrado.' };
-    return { ok: true, token: token.token };
+    try {
+      const data = await fetchJson<{ ok: boolean; token?: string }>('/api/auth/reset/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      return { ok: true, token: data.token };
+    } catch (error) {
+      return { ok: false, erro: (error as Error).message };
+    }
   };
 
   const resetarSenha = async (email: string, token: string, novaSenha: string) => {
-    if (novaSenha.length < 6) return { ok: false, erro: 'Senha deve ter pelo menos 6 caracteres.' };
-    const emailLower = email.toLowerCase();
-    if (!validarTokenReset(emailLower, token)) {
-      return { ok: false, erro: 'Token inválido ou expirado.' };
-    }
-    const ok = await atualizarSenha(emailLower, novaSenha);
-    if (ok) {
-      consumirTokenReset(emailLower, token);
-      limparFalhasLogin(emailLower);
+    try {
+      await fetchJson('/api/auth/reset/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, token, novaSenha })
+      });
       return { ok: true };
+    } catch (error) {
+      return { ok: false, erro: (error as Error).message };
     }
-    return { ok: false, erro: 'Não foi possível atualizar a senha.' };
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
     setUsuario(null);
-    setUsuarioLogado(null);
   };
 
   const value = useMemo(

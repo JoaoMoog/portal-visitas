@@ -21,18 +21,20 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { RequireAdmin } from '@/components/ProtectedRoute';
 import { useVisitas } from '@/contexts/VisitasContext';
-import { getUsuarios } from '@/utils/localStorage';
-import { Usuario } from '@/types/models';
+import { UsuarioPublico } from '@/types/models';
 
 export default function AdminVisitasPage() {
   const { visitas, cancelarVisita, deletarVisita } = useVisitas();
-  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [usuarios, setUsuarios] = useState<UsuarioPublico[]>([]);
   const [visitaSelecionada, setVisitaSelecionada] = useState<string | null>(null);
   const [visitaParaExcluir, setVisitaParaExcluir] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
-    setUsuarios(getUsuarios());
+    fetch('/api/admin/usuarios', { credentials: 'include' })
+      .then((res) => res.json())
+      .then((data) => setUsuarios(data.usuarios ?? []))
+      .catch(() => setUsuarios([]));
   }, []);
 
   const visitaDialog = useMemo(() => visitas.find((v) => v.id === visitaSelecionada), [visitas, visitaSelecionada]);
@@ -75,9 +77,9 @@ export default function AdminVisitasPage() {
                     <TableCell>{visita.status === 'cancelada' ? 'Cancelada' : 'Ativa'}</TableCell>
                     <TableCell>
                       <Stack direction="row" spacing={1}>
-                        <Button size="small" variant="outlined" onClick={() => router.push(`/admin/visitas/${visita.id}`)}>
-                          Editar
-                        </Button>
+                      <Button size="small" variant="outlined" onClick={() => router.push(`/admin/visitas/${visita.id}`)}>
+                        Editar
+                      </Button>
                         <Button size="small" variant="outlined" onClick={() => setVisitaSelecionada(visita.id)}>
                           Ver inscritos
                         </Button>
@@ -86,7 +88,7 @@ export default function AdminVisitasPage() {
                           color="error"
                           variant="outlined"
                           disabled={visita.status === 'cancelada'}
-                          onClick={() => cancelarVisita(visita.id)}
+                          onClick={() => void cancelarVisita(visita.id)}
                         >
                           Cancelar visita
                         </Button>
@@ -148,7 +150,7 @@ export default function AdminVisitasPage() {
               color="error"
               variant="contained"
               onClick={() => {
-                if (visitaParaExcluir) deletarVisita(visitaParaExcluir);
+                if (visitaParaExcluir) void deletarVisita(visitaParaExcluir);
                 setVisitaParaExcluir(null);
               }}
             >

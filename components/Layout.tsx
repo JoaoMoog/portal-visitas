@@ -4,14 +4,22 @@ import { AppBar, Toolbar, Typography, Button, Box, Container, Chip, Stack } from
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEffect } from 'react';
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {
-  const { usuario, logout } = useAuth();
+  const { usuario, carregando, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
-  const handleLogout = () => {
-    logout();
+  useEffect(() => {
+    if (carregando) return;
+    if (!usuario && pathname !== '/login') {
+      router.push('/login');
+    }
+  }, [carregando, usuario, pathname, router]);
+
+  const handleLogout = async () => {
+    await logout();
     router.push('/login');
   };
 

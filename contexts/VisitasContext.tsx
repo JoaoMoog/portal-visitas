@@ -1,81 +1,111 @@
 'use client';
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { Visita } from '@/types/models';
-import {
-  cancelarInscricao,
-  cancelarVisita,
-  getVisitas,
-  inscreverUsuarioEmVisita,
-  saveVisitas
-} from '@/utils/localStorage';
+import { Visita, VisitaInput } from '@/types/models';
 
 export type VisitasContextType = {
   visitas: Visita[];
-  adicionarVisita: (visita: Visita) => void;
-  adicionarVisitas: (novas: Visita[]) => void;
-  atualizarVisita: (visitaAtualizada: Visita) => void;
-  cancelarVisita: (id: string) => void;
-  deletarVisita: (id: string) => void;
-  inscrever: (usuarioId: string, visitaId: string) => void;
-  removerInscricao: (usuarioId: string, visitaId: string, motivo: string) => void;
+  adicionarVisita: (visita: VisitaInput) => Promise<void>;
+  adicionarVisitas: (novas: VisitaInput[]) => Promise<void>;
+  atualizarVisita: (visitaAtualizada: Visita) => Promise<void>;
+  cancelarVisita: (id: string) => Promise<void>;
+  deletarVisita: (id: string) => Promise<void>;
+  inscrever: (visitaId: string) => Promise<{ ok: boolean; erro?: string }>;
+  removerInscricao: (visitaId: string, motivo: string) => Promise<{ ok: boolean; erro?: string }>;
 };
 
 const VisitasContext = createContext<VisitasContextType | undefined>(undefined);
 
+const fetchJson = async <T,>(input: RequestInfo | URL, init?: RequestInit): Promise<T> => {
+  const res = await fetch(input, { credentials: 'include', ...init });
+  const data = (await res.json().catch(() => ({}))) as T & { error?: string };
+  if (!res.ok) {
+    const erro = (data as { error?: string }).error || 'Erro inesperado';
+    throw new Error(erro);
+  }
+  return data;
+};
+
 export const VisitasProvider = ({ children }: { children: React.ReactNode }) => {
   const [visitas, setVisitas] = useState<Visita[]>([]);
 
+  const carregarVisitas = async () => {
+    try {
+      const data = await fetchJson<{ visitas: Visita[] }>('/api/visitas');
+      setVisitas(data.visitas);
+    } catch (error) {
+      console.error('Erro ao carregar visitas', error);
+    }
+  };
+
   useEffect(() => {
-    setVisitas(getVisitas());
+    void carregarVisitas();
   }, []);
 
-  const adicionarVisita = (visita: Visita) => {
-    setVisitas((prev) => {
-      const novas = [...prev, visita];
-      saveVisitas(novas);
-      return novas;
+  const adicionarVisita = async (visita: VisitaInput) => {
+    const data = await fetchJson<{ visitas: Visita[] }>('/api/visitas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visita })
     });
+    setVisitas(data.visitas);
   };
 
-  const adicionarVisitas = (novasVisitas: Visita[]) => {
-    if (novasVisitas.length === 0) return;
-    setVisitas((prev) => {
-      const novas = [...prev, ...novasVisitas];
-      saveVisitas(novas);
-      return novas;
+  const adicionarVisitas = async (novas: VisitaInput[]) => {
+    if (novas.length === 0) return;
+    const data = await fetchJson<{ visitas: Visita[] }>('/api/visitas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visitas: novas })
     });
+    setVisitas(data.visitas);
   };
 
-  const atualizarVisita = (visitaAtualizada: Visita) => {
-    setVisitas((prev) => {
-      const novas = prev.map((v) => (v.id === visitaAtualizada.id ? visitaAtualizada : v));
-      saveVisitas(novas);
-      return novas;
+  const atualizarVisita = async (visitaAtualizada: Visita) => {
+    const data = await fetchJson<{ visitas: Visita[] }>(`/api/visitas/${visitaAtualizada.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(visitaAtualizada)
     });
+    setVisitas(data.visitas);
   };
 
-  const cancelarVisitaHandler = (id: string) => {
-    const novas = cancelarVisita(id);
-    setVisitas([...novas]);
-  };
-
-  const deletarVisita = (id: string) => {
-    setVisitas((prev) => {
-      const novas = prev.filter((v) => v.id !== id);
-      saveVisitas(novas);
-      return novas;
+  const cancelarVisita = async (id: string) => {
+    const data = await fetchJson<{ visitas: Visita[] }>(`/api/visitas/${id}/cancelar`, {
+      method: 'POST'
     });
+    setVisitas(data.visitas);
   };
 
-  const inscrever = (usuarioId: string, visitaId: string) => {
-    const novas = inscreverUsuarioEmVisita(usuarioId, visitaId);
-    setVisitas([...novas]);
+  const deletarVisita = async (id: string) => {
+    const data = await fetchJson<{ visitas: Visita[] }>(`/api/visitas/${id}`, {
+      method: 'DELETE'
+    });
+    setVisitas(data.visitas);
   };
 
-  const removerInscricao = (usuarioId: string, visitaId: string, motivo: string) => {
-    const novas = cancelarInscricao(usuarioId, visitaId, motivo);
-    setVisitas([...novas]);
+  const inscrever = async (visitaId: string) => {
+    try {
+      const data = await fetchJson<{ visitas: Visita[] }>(`/api/visitas/${visitaId}/inscricoes`, { method: 'POST' });
+      setVisitas(data.visitas);
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, erro: (error as Error).message };
+    }
+  };
+
+  const removerInscricao = async (visitaId: string, motivo: string) => {
+    try {
+      const data = await fetchJson<{ visitas: Visita[] }>(`/api/visitas/${visitaId}/cancelar-inscricao`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ motivo })
+      });
+      setVisitas(data.visitas);
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, erro: (error as Error).message };
+    }
   };
 
   const value = useMemo(
@@ -84,7 +114,7 @@ export const VisitasProvider = ({ children }: { children: React.ReactNode }) => 
       adicionarVisita,
       adicionarVisitas,
       atualizarVisita,
-      cancelarVisita: cancelarVisitaHandler,
+      cancelarVisita,
       deletarVisita,
       inscrever,
       removerInscricao

@@ -4,11 +4,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Box, Card, CardContent, Grid, Stack, Typography, Chip, Divider, Avatar, LinearProgress } from '@mui/material';
 import { RequireAdmin } from '@/components/ProtectedRoute';
 import { useVisitas } from '@/contexts/VisitasContext';
-import { getUsuarios } from '@/utils/localStorage';
-import { Usuario, Visita } from '@/types/models';
+import { UsuarioPublico, Visita } from '@/types/models';
 
 type UserStats = {
-  usuario: Usuario;
+  usuario: UsuarioPublico;
   participacoes: number;
 };
 
@@ -31,11 +30,14 @@ const Bar = ({ label, value, max, color }: { label: string; value: number; max: 
 
 export default function AdminDashboardPage() {
   const { visitas } = useVisitas();
-  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [usuarios, setUsuarios] = useState<UsuarioPublico[]>([]);
   const usuariosPorId = useMemo(() => new Map(usuarios.map((u) => [u.id, u])), [usuarios]);
 
   useEffect(() => {
-    setUsuarios(getUsuarios());
+    fetch('/api/admin/usuarios', { credentials: 'include' })
+      .then((res) => res.json())
+      .then((data) => setUsuarios(data.usuarios ?? []))
+      .catch(() => setUsuarios([]));
   }, []);
 
   const totalVisitas = visitas.length;

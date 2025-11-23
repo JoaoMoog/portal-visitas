@@ -24,10 +24,10 @@ export default function EditarVisitaPage() {
     setForm((prev) => (prev ? { ...prev, [field]: value } : prev));
   };
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!form) return;
-    atualizarVisita({ ...form, limiteVagas: Number(form.limiteVagas) });
+    await atualizarVisita({ ...form, limiteVagas: Number(form.limiteVagas) });
     router.push('/admin/visitas');
   };
 

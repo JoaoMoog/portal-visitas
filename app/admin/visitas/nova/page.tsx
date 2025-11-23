@@ -52,9 +52,9 @@ export default function NovaVisitaPage() {
       datas.push(d.toISOString().slice(0, 10));
     }
     return datas;
-  }, [form.data, form.intervaloDias, form.ocorrencias, form.recorrente]);
+  }, [form.data, form.intervaloDias, form.ocorrencias, form.recorrente, form.diaDaSemana]);
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!form.data) return;
     const baseId = `v${Date.now()}`;
@@ -79,9 +79,9 @@ export default function NovaVisitaPage() {
     }));
 
     if (visitasGeradas.length > 1) {
-      adicionarVisitas(visitasGeradas);
+      await adicionarVisitas(visitasGeradas);
     } else {
-      adicionarVisita(visitasGeradas[0]);
+      await adicionarVisita(visitasGeradas[0]);
     }
     router.push('/admin/visitas');
   };

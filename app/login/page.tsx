@@ -21,7 +21,6 @@ import {
   Typography
 } from '@mui/material';
 import { useAuth } from '@/contexts/AuthContext';
-import { ADMIN_EMAIL } from '@/utils/localStorage';
 
 export default function LoginPage() {
   const { login, registrar, solicitarReset, resetarSenha } = useAuth();
@@ -158,15 +157,6 @@ export default function LoginPage() {
                     fullWidth
                   />
                   <TextField
-                    label="Telefone (WhatsApp)"
-                    type="tel"
-                    placeholder="(11) 98888-7777"
-                    value={telefone}
-                    onChange={(e) => setTelefone(e.target.value)}
-                    required
-                    fullWidth
-                  />
-                  <TextField
                     label="Senha"
                     type="password"
                     value={senha}
@@ -191,6 +181,15 @@ export default function LoginPage() {
                     label="Nome completo"
                     value={nome}
                     onChange={(e) => setNome(e.target.value)}
+                    required
+                    fullWidth
+                  />
+                  <TextField
+                    label="Telefone (WhatsApp)"
+                    type="tel"
+                    placeholder="(11) 98888-7777"
+                    value={telefone}
+                    onChange={(e) => setTelefone(e.target.value)}
                     required
                     fullWidth
                   />
@@ -282,27 +281,21 @@ export default function LoginPage() {
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setForgotOpen(false)}>Fechar</Button>
           {forgotStep === 'solicitar' ? (
-            <Button
-              variant="contained"
-              onClick={async () => {
-                setErro('');
-                setSucesso('');
-                setLoadingReset(true);
-                const resp = await solicitarReset(forgotEmail);
-                setLoadingReset(false);
-                if (!resp.ok || !resp.token) {
-                  setErro(resp.erro ?? 'Email não encontrado.');
-                  return;
-                }
-                // chama API para enviar email
-                await fetch('/api/password/solicitar', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ email: forgotEmail, token: resp.token })
-                }).catch(() => {});
-                setSucesso('Token enviado para seu email.');
-                setForgotStep('resetar');
-                setForgotToken('');
+              <Button
+                variant="contained"
+                onClick={async () => {
+                  setErro('');
+                  setSucesso('');
+                  setLoadingReset(true);
+                  const resp = await solicitarReset(forgotEmail);
+                  setLoadingReset(false);
+                  if (!resp.ok || !resp.token) {
+                    setErro(resp.erro ?? 'Email não encontrado.');
+                    return;
+                  }
+                  setSucesso('Token enviado para seu email.');
+                  setForgotStep('resetar');
+                setForgotToken(resp.token ?? '');
                 setForgotNovaSenha('');
               }}
               disabled={loadingReset || !forgotEmail}

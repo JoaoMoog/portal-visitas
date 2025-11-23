@@ -9,6 +9,8 @@ export type Usuario = {
   role: Role;
 };
 
+export type UsuarioPublico = Omit<Usuario, 'senhaHash'>;
+
 export type VisitaStatus = 'ativa' | 'cancelada';
 
 export type CancelamentoInscricao = {
@@ -34,3 +36,5 @@ export type Visita = {
     diaDaSemana?: number; // 0=domingo ... 6=sabado
   };
 };
+
+export type VisitaInput = Omit<Visita, 'id' | 'inscritosIds' | 'status' | 'cancelamentos'> & { id?: string };

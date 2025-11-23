@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Card, CardActions, CardContent, Typography, Button, Chip, Stack, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
+import { useRouter } from 'next/navigation';
 import { Visita } from '@/types/models';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVisitas } from '@/contexts/VisitasContext';
@@ -13,6 +14,7 @@ interface Props {
 export const VisitCard = ({ visita }: Props) => {
   const { usuario } = useAuth();
   const { inscrever, removerInscricao } = useVisitas();
+  const router = useRouter();
   const [motivoCancelamento, setMotivoCancelamento] = useState('');
   const [dialogAberto, setDialogAberto] = useState(false);
   const [erroMotivo, setErroMotivo] = useState('');
@@ -21,11 +23,14 @@ export const VisitCard = ({ visita }: Props) => {
   const inscrito = usuario ? visita.inscritosIds.includes(usuario.id) : false;
 
   const handleAction = () => {
-    if (!usuario) return;
+    if (!usuario) {
+      router.push('/login');
+      return;
+    }
     if (inscrito) {
       setDialogAberto(true);
     } else {
-      inscrever(usuario.id, visita.id);
+      void inscrever(visita.id);
     }
   };
 
@@ -36,7 +41,7 @@ export const VisitCard = ({ visita }: Props) => {
       setErroMotivo('Informe o motivo do cancelamento');
       return;
     }
-    removerInscricao(usuario.id, visita.id, motivo);
+    void removerInscricao(visita.id, motivo);
     setMotivoCancelamento('');
     setErroMotivo('');
     setDialogAberto(false);

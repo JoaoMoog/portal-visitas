@@ -3,12 +3,10 @@
 import { useMemo, useState } from 'react';
 import { Grid, TextField, MenuItem, Stack, Typography, Alert } from '@mui/material';
 import { VisitCard } from '@/components/VisitCard';
-import { useAuth } from '@/contexts/AuthContext';
 import { useVisitas } from '@/contexts/VisitasContext';
 import { RequireAuth } from '@/components/ProtectedRoute';
 
 export default function HomePage() {
-  const { usuario } = useAuth();
   const { visitas } = useVisitas();
   const [filtroHospital, setFiltroHospital] = useState('');
   const [filtroData, setFiltroData] = useState('');
@@ -63,7 +61,6 @@ export default function HomePage() {
             ))}
           </Grid>
         )}
-        {!usuario && <Alert severity="warning">E necessario estar logado para se inscrever.</Alert>}
       </Stack>
     </RequireAuth>
   );
