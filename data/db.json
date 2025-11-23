@@ -1,13 +1,5 @@
 {
   "usuarios": [
-    {
-      "id": "cee2b858-8675-4a87-9cc6-21d385aa5465",
-      "nome": "Admin",
-      "email": "admin@admin.com",
-      "telefone": "21998350578",
-      "senhaHash": "$2a$10$GYJZ9N5ll1IWX2b1KyYifOai2ymn/zGHwRY2SkxEehceMLfaocNNS",
-      "role": "admin"
-    }
   ],
   "visitas": [],
   "sessions": [],
