@@ -23,8 +23,8 @@ export type DbSchema = {
   resetTokens: ResetToken[];
 };
 
-const DATA_DIR = path.join(process.cwd(), 'data');
-const DB_FILE = path.join(DATA_DIR, 'db.json');
+let DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), 'data');
+let DB_FILE = process.env.DATA_FILE ?? path.join(DATA_DIR, 'db.json');
 
 const defaultVisitas: Visita[] = [
   {
@@ -78,7 +78,18 @@ const defaultVisitas: Visita[] = [
 ];
 
 const ensureDir = async () => {
-  await fs.mkdir(DATA_DIR, { recursive: true });
+  try {
+    await fs.mkdir(DATA_DIR, { recursive: true });
+  } catch (error: any) {
+    if (error?.code === 'EROFS' || error?.code === 'EACCES') {
+      // fallback para caminho gravável (ex.: Vercel usa FS somente leitura fora de /tmp)
+      DATA_DIR = path.join('/tmp', 'portal-visitas');
+      DB_FILE = path.join(DATA_DIR, 'db.json');
+      await fs.mkdir(DATA_DIR, { recursive: true });
+    } else {
+      throw error;
+    }
+  }
 };
 
 const fileExists = async (file: string) => {
