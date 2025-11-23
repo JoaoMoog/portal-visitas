@@ -85,6 +85,7 @@ const ensureDir = async () => {
       // fallback para caminho gravável (ex.: Vercel usa FS somente leitura fora de /tmp)
       DATA_DIR = path.join('/tmp', 'portal-visitas');
       DB_FILE = path.join(DATA_DIR, 'db.json');
+      console.warn('[storage] permissao negada no caminho original, trocando para', DB_FILE);
       await fs.mkdir(DATA_DIR, { recursive: true });
     } else {
       throw error;
@@ -127,13 +128,23 @@ const seedDb = async () => {
 
 export const readDb = async (): Promise<DbSchema> => {
   await seedDb();
-  const raw = await fs.readFile(DB_FILE, 'utf8');
-  return JSON.parse(raw) as DbSchema;
+  try {
+    const raw = await fs.readFile(DB_FILE, 'utf8');
+    return JSON.parse(raw) as DbSchema;
+  } catch (error) {
+    console.error('[storage] erro lendo DB', DB_FILE, error);
+    throw error;
+  }
 };
 
 export const writeDb = async (db: DbSchema) => {
   await ensureDir();
-  await fs.writeFile(DB_FILE, JSON.stringify(db, null, 2), 'utf8');
+  try {
+    await fs.writeFile(DB_FILE, JSON.stringify(db, null, 2), 'utf8');
+  } catch (error) {
+    console.error('[storage] erro escrevendo DB', DB_FILE, error);
+    throw error;
+  }
 };
 
 export const pruneExpiredSessions = (db: DbSchema) => {
