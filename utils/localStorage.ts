@@ -71,13 +71,17 @@ const defaultVisitas: Visita[] = [
 const isBrowser = () => typeof window !== 'undefined';
 
 const normalizeVisita = (visita: Visita | (Partial<Visita> & { id: string })): Visita => ({
-  cancelamentos: [],
-  inscritosIds: [],
-  status: 'ativa',
-  ...visita,
+  id: visita.id,
+  titulo: visita.titulo ?? '',
+  hospital: visita.hospital ?? '',
+  descricao: visita.descricao,
+  data: visita.data ?? '',
+  hora: visita.hora ?? '',
+  limiteVagas: visita.limiteVagas ?? 0,
   cancelamentos: visita.cancelamentos ?? [],
   inscritosIds: visita.inscritosIds ?? [],
-  status: visita.status ?? 'ativa'
+  status: visita.status ?? 'ativa',
+  recorrencia: visita.recorrencia
 });
 
 const getItem = <T,>(key: string): T | null => {
