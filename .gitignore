@@ -30,3 +30,6 @@ Thumbs.db
 # Other tooling
 .vercel
 .turbo
+
+.vercel
+.env*.local

@@ -1,8 +1,4 @@
-import fs from 'fs/promises';
-import path from 'path';
-import bcrypt from 'bcryptjs';
-import { get as edgeGet } from '@vercel/edge-config';
-import { ADMIN_EMAIL } from '../constants';
+import { createClient } from '@vercel/edge-config';
 import { Usuario, Visita } from '@/types/models';
 
 export type Session = {
@@ -24,15 +20,23 @@ export type DbSchema = {
   resetTokens: ResetToken[];
 };
 
-let DATA_DIR =
-  process.env.DATA_DIR ??
-  (process.env.VERCEL ? path.join('/tmp', 'portal-visitas') : path.join(process.cwd(), 'data'));
-let DB_FILE = process.env.DATA_FILE ?? path.join(DATA_DIR, 'db.json');
-const EDGE_CONFIG_ID = process.env.EDGE_CONFIG_ID ?? process.env.EDGE_CONFIG;
-const EDGE_CONFIG_TOKEN = process.env.EDGE_CONFIG_TOKEN;
-const EDGE_CONFIG_KEY = process.env.EDGE_CONFIG_KEY ?? 'portal-visitas:db';
-const USE_EDGE_CONFIG = Boolean(EDGE_CONFIG_ID);
-const ADMIN_DEFAULT_PASSWORD = 'admin123';
+const EDGE_CONFIG_CONNECTION = process.env.EDGE_CONFIG || process.env.EDGE_CONFIG;
+if (!EDGE_CONFIG_CONNECTION) {
+  throw new Error('Defina EDGE_CONFIG com a connection string completa da Edge Config.');
+}
+
+const parsedUrl = new URL(EDGE_CONFIG_CONNECTION);
+const EDGE_CONFIG_ID = parsedUrl.pathname.split('/').pop() || '';
+const EDGE_CONFIG_TOKEN = parsedUrl.searchParams.get('token') || '';
+const EDGE_CONFIG_WRITE_TOKEN = process.env.EDGE_CONFIG_WRITE_TOKEN ?? process.env.VERCEL_ACCESS_TOKEN ?? '';
+const EDGE_CONFIG_TEAM_ID = process.env.VERCEL_TEAM_ID;
+if (!EDGE_CONFIG_ID.startsWith('ecfg_') || !EDGE_CONFIG_TOKEN) {
+  throw new Error('EDGE_CONFIG invalida: precisa conter ecfg_* e token=*.');
+}
+
+const rawEdgeKey = process.env.EDGE_CONFIG_KEY ?? 'portal_visitas_db';
+const EDGE_CONFIG_KEY = rawEdgeKey.replace(/[^A-Za-z0-9_-]/g, '_');
+const edgeClient = createClient(EDGE_CONFIG_CONNECTION);
 
 const defaultVisitas: Visita[] = [
   {
@@ -46,49 +50,12 @@ const defaultVisitas: Visita[] = [
     inscritosIds: [],
     status: 'ativa',
     cancelamentos: []
-  },
+  }
 ];
 
-const ensureDir = async () => {
-  if (USE_EDGE_CONFIG) return;
-  try {
-    await fs.mkdir(DATA_DIR, { recursive: true });
-  } catch (error: any) {
-    if (error?.code === 'EROFS' || error?.code === 'EACCES') {
-      // fallback para caminho gravavel (ex.: Vercel usa FS somente leitura fora de /tmp)
-      DATA_DIR = path.join('/tmp', 'portal-visitas');
-      DB_FILE = path.join(DATA_DIR, 'db.json');
-      console.warn('[storage] permissao negada no caminho original, trocando para', DB_FILE);
-      await fs.mkdir(DATA_DIR, { recursive: true });
-    } else {
-      throw error;
-    }
-  }
-};
-
-const fileExists = async (file: string) => {
-  if (USE_EDGE_CONFIG) return false;
-  try {
-    await fs.access(file);
-    return true;
-  } catch {
-    return false;
-  }
-};
-
 const buildDefaultDb = async (): Promise<DbSchema> => {
-  const senhaHash = await bcrypt.hash(ADMIN_DEFAULT_PASSWORD, 10);
-  const admin: Usuario = {
-    id: 'admin-user',
-    nome: 'Admin',
-    email: ADMIN_EMAIL,
-    telefone: '',
-    senhaHash,
-    role: 'admin'
-  };
-
   return {
-    usuarios: [admin],
+    usuarios: [],
     visitas: defaultVisitas,
     sessions: [],
     resetTokens: []
@@ -96,90 +63,33 @@ const buildDefaultDb = async (): Promise<DbSchema> => {
 };
 
 const seedDb = async () => {
-  if (USE_EDGE_CONFIG) {
-    const existing = await edgeGet<DbSchema | null>(EDGE_CONFIG_KEY);
-    if (existing) return;
-    const initial = await buildDefaultDb();
-    await writeEdgeConfig(initial);
-    return;
-  }
-
-  await ensureDir();
-  if (await fileExists(DB_FILE)) return;
-
+  const existing = await edgeClient.get<DbSchema | null>(EDGE_CONFIG_KEY).catch((error) => {
+    console.error('[storage] erro lendo Edge Config para seed', EDGE_CONFIG_KEY, error);
+    return null;
+  });
+  if (existing) return;
   const initial = await buildDefaultDb();
-  await fs.writeFile(DB_FILE, JSON.stringify(initial, null, 2), 'utf8');
-};
-
-const ensureAdminUser = async (db: DbSchema) => {
-  const adminEmail = ADMIN_EMAIL.toLowerCase();
-
-  const idx = db.usuarios.findIndex((u) => u.email.toLowerCase() === adminEmail);
-  if (idx === -1) {
-    const senhaHash = await bcrypt.hash(ADMIN_DEFAULT_PASSWORD, 10);
-    const admin: Usuario = {
-      id: 'admin-user',
-      nome: 'Admin',
-      email: ADMIN_EMAIL,
-      telefone: '',
-      senhaHash,
-      role: 'admin'
-    };
-    db.usuarios.push(admin);
-    await writeDb(db);
-    console.warn('[storage] admin ausente; criado com senha de ambiente');
-    return db;
-  }
-
-  // sempre sincroniza a senha com a env e garante role admin
-  const existing = db.usuarios[idx];
-  if (existing.role !== 'admin' || existing.email !== ADMIN_EMAIL) {
-    db.usuarios[idx] = { ...existing, role: 'admin', email: ADMIN_EMAIL };
-    await writeDb(db);
-    console.warn('[storage] admin existente; role/email sincronizados');
-  }
-  return db;
+  await writeEdgeConfig(initial);
 };
 
 export const readDb = async (): Promise<DbSchema> => {
   await seedDb();
-  if (USE_EDGE_CONFIG) {
-    try {
-      const stored = await edgeGet<DbSchema | null>(EDGE_CONFIG_KEY);
-      if (!stored) {
-        const fallback = await buildDefaultDb();
-        await writeEdgeConfig(fallback);
-        return fallback;
-      }
-      return await ensureAdminUser(stored);
-    } catch (error) {
-      console.error('[storage] erro lendo DB (Edge Config)', EDGE_CONFIG_KEY, error);
-      throw error;
-    }
-  }
   try {
-    const raw = await fs.readFile(DB_FILE, 'utf8');
-    const db = JSON.parse(raw) as DbSchema;
-    return await ensureAdminUser(db);
+    const stored = await edgeClient.get<DbSchema | null>(EDGE_CONFIG_KEY);
+    if (!stored) {
+      const fallback = await buildDefaultDb();
+      await writeEdgeConfig(fallback);
+      return fallback;
+    }
+    return stored;
   } catch (error) {
-    console.error('[storage] erro lendo DB', DB_FILE, error);
+    console.error('[storage] erro lendo DB (Edge Config)', EDGE_CONFIG_KEY, error);
     throw error;
   }
 };
 
 export const writeDb = async (db: DbSchema) => {
-  await ensureDir();
-  if (USE_EDGE_CONFIG) {
-    await writeEdgeConfig(db);
-    return;
-  }
-  try {
-    await fs.writeFile(DB_FILE, JSON.stringify(db, null, 2), 'utf8');
-    console.log('[storage] wrote DB to', DB_FILE);
-  } catch (error) {
-    console.error('[storage] erro escrevendo DB', DB_FILE, error);
-    throw error;
-  }
+  await writeEdgeConfig(db);
 };
 
 export const pruneExpiredSessions = (db: DbSchema) => {
@@ -189,13 +99,12 @@ export const pruneExpiredSessions = (db: DbSchema) => {
 };
 
 async function writeEdgeConfig(db: DbSchema) {
-  if (!EDGE_CONFIG_ID || !EDGE_CONFIG_TOKEN) {
-    throw new Error('EDGE_CONFIG_ID e EDGE_CONFIG_TOKEN sao obrigatorios para persistencia.');
-  }
-  const response = await fetch(`https://api.vercel.com/v1/edge-config/${EDGE_CONFIG_ID}/items`, {
+  const writeToken = EDGE_CONFIG_WRITE_TOKEN || EDGE_CONFIG_TOKEN;
+  const teamQuery = EDGE_CONFIG_TEAM_ID ? `?teamId=${EDGE_CONFIG_TEAM_ID}` : '';
+  const response = await fetch(`https://api.vercel.com/v1/edge-config/${EDGE_CONFIG_ID}/items${teamQuery}`, {
     method: 'PATCH',
     headers: {
-      Authorization: `Bearer ${EDGE_CONFIG_TOKEN}`,
+      Authorization: `Bearer ${writeToken}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
