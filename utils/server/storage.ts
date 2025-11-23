@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import bcrypt from 'bcryptjs';
+import { kv } from '@vercel/kv';
 import { ADMIN_EMAIL } from '../constants';
 import { Usuario, Visita } from '@/types/models';
 
@@ -27,6 +28,8 @@ let DATA_DIR =
   process.env.DATA_DIR ??
   (process.env.VERCEL ? path.join('/tmp', 'portal-visitas') : path.join(process.cwd(), 'data'));
 let DB_FILE = process.env.DATA_FILE ?? path.join(DATA_DIR, 'db.json');
+const USE_KV = Boolean(process.env.KV_REST_API_URL || process.env.KV_URL);
+const KV_KEY = process.env.KV_KEY ?? 'portal-visitas:db';
 
 const defaultVisitas: Visita[] = [
   {
@@ -41,50 +44,15 @@ const defaultVisitas: Visita[] = [
     status: 'ativa',
     cancelamentos: []
   },
-  {
-    id: 'v2',
-    titulo: 'Visita - Oncologia',
-    hospital: 'Hospital Vida',
-    descricao: 'Conversa e leitura para pacientes oncologicos.',
-    data: '2025-09-12',
-    hora: '10:00',
-    limiteVagas: 5,
-    inscritosIds: [],
-    status: 'ativa',
-    cancelamentos: []
-  },
-  {
-    id: 'v3',
-    titulo: 'Visita - Geriatria',
-    hospital: 'Hospital Esperanca',
-    descricao: 'Companhia e atividades ludicas para idosos.',
-    data: '2025-09-15',
-    hora: '09:00',
-    limiteVagas: 8,
-    inscritosIds: [],
-    status: 'ativa',
-    cancelamentos: []
-  },
-  {
-    id: 'v4',
-    titulo: 'Visita - Maternidade',
-    hospital: 'Hospital Central',
-    descricao: 'Apoio a maes e recem-nascidos.',
-    data: '2025-09-20',
-    hora: '16:00',
-    limiteVagas: 6,
-    inscritosIds: [],
-    status: 'ativa',
-    cancelamentos: []
-  }
 ];
 
 const ensureDir = async () => {
+  if (USE_KV) return;
   try {
     await fs.mkdir(DATA_DIR, { recursive: true });
   } catch (error: any) {
     if (error?.code === 'EROFS' || error?.code === 'EACCES') {
-      // fallback para caminho gravável (ex.: Vercel usa FS somente leitura fora de /tmp)
+      // fallback para caminho gravavel (ex.: Vercel usa FS somente leitura fora de /tmp)
       DATA_DIR = path.join('/tmp', 'portal-visitas');
       DB_FILE = path.join(DATA_DIR, 'db.json');
       console.warn('[storage] permissao negada no caminho original, trocando para', DB_FILE);
@@ -96,6 +64,7 @@ const ensureDir = async () => {
 };
 
 const fileExists = async (file: string) => {
+  if (USE_KV) return false;
   try {
     await fs.access(file);
     return true;
@@ -104,10 +73,7 @@ const fileExists = async (file: string) => {
   }
 };
 
-const seedDb = async () => {
-  await ensureDir();
-  if (await fileExists(DB_FILE)) return;
-
+const buildDefaultDb = async (): Promise<DbSchema> => {
   const adminPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'admin123';
   const senhaHash = await bcrypt.hash(adminPassword, 10);
   const admin: Usuario = {
@@ -119,12 +85,27 @@ const seedDb = async () => {
     role: 'admin'
   };
 
-  const initial: DbSchema = {
+  return {
     usuarios: [admin],
     visitas: defaultVisitas,
     sessions: [],
     resetTokens: []
   };
+};
+
+const seedDb = async () => {
+  if (USE_KV) {
+    const exists = await kv.exists(KV_KEY);
+    if (exists) return;
+    const initial = await buildDefaultDb();
+    await kv.set(KV_KEY, initial);
+    return;
+  }
+
+  await ensureDir();
+  if (await fileExists(DB_FILE)) return;
+
+  const initial = await buildDefaultDb();
   await fs.writeFile(DB_FILE, JSON.stringify(initial, null, 2), 'utf8');
 };
 
@@ -159,6 +140,20 @@ const ensureAdminUser = async (db: DbSchema) => {
 
 export const readDb = async (): Promise<DbSchema> => {
   await seedDb();
+  if (USE_KV) {
+    try {
+      const stored = await kv.get<DbSchema>(KV_KEY);
+      if (!stored) {
+        const fallback = await buildDefaultDb();
+        await kv.set(KV_KEY, fallback);
+        return fallback;
+      }
+      return await ensureAdminUser(stored);
+    } catch (error) {
+      console.error('[storage] erro lendo DB (KV)', KV_KEY, error);
+      throw error;
+    }
+  }
   try {
     const raw = await fs.readFile(DB_FILE, 'utf8');
     const db = JSON.parse(raw) as DbSchema;
@@ -171,6 +166,16 @@ export const readDb = async (): Promise<DbSchema> => {
 
 export const writeDb = async (db: DbSchema) => {
   await ensureDir();
+  if (USE_KV) {
+    try {
+      await kv.set(KV_KEY, db);
+      console.log('[storage] wrote DB to KV key', KV_KEY);
+      return;
+    } catch (error) {
+      console.error('[storage] erro escrevendo DB (KV)', KV_KEY, error);
+      throw error;
+    }
+  }
   try {
     await fs.writeFile(DB_FILE, JSON.stringify(db, null, 2), 'utf8');
     console.log('[storage] wrote DB to', DB_FILE);
