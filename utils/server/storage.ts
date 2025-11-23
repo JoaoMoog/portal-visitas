@@ -130,22 +130,30 @@ const seedDb = async () => {
 
 const ensureAdminUser = async (db: DbSchema) => {
   const adminEmail = ADMIN_EMAIL.toLowerCase();
-  const hasAdmin = db.usuarios.some((u) => u.email.toLowerCase() === adminEmail && u.role === 'admin');
-  if (hasAdmin) return db;
-
   const adminPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'admin123';
   const senhaHash = await bcrypt.hash(adminPassword, 10);
-  const admin: Usuario = {
-    id: 'admin-user',
-    nome: 'Admin',
-    email: ADMIN_EMAIL,
-    telefone: '',
-    senhaHash,
-    role: 'admin'
-  };
-  db.usuarios.push(admin);
+
+  const idx = db.usuarios.findIndex((u) => u.email.toLowerCase() === adminEmail);
+  if (idx === -1) {
+    const admin: Usuario = {
+      id: 'admin-user',
+      nome: 'Admin',
+      email: ADMIN_EMAIL,
+      telefone: '',
+      senhaHash,
+      role: 'admin'
+    };
+    db.usuarios.push(admin);
+    await writeDb(db);
+    console.warn('[storage] admin ausente; criado com senha de ambiente');
+    return db;
+  }
+
+  // sempre sincroniza a senha com a env e garante role admin
+  const existing = db.usuarios[idx];
+  db.usuarios[idx] = { ...existing, senhaHash, role: 'admin', email: ADMIN_EMAIL };
   await writeDb(db);
-  console.warn('[storage] admin ausente; criado com senha de ambiente');
+  console.warn('[storage] admin existente; senha/role sincronizados com env');
   return db;
 };
 
