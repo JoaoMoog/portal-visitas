@@ -193,7 +193,7 @@ export const getUsuarios = (): Usuario[] => {
   seedInitialData();
   const usuarios = getItem<Usuario[]>(USUARIOS_KEY) ?? [];
   // Garante propriedades que podem faltar em dados antigos
-  return usuarios.map((u) => ({ ...u, telefone: u.telefone ?? '' }));
+  return usuarios.map((u) => ({ ...u, telefone: u.telefone ?? '', cpf: u.cpf ?? '' }));
 };
 
 export const saveUsuarios = (usuarios: Usuario[]) => {
@@ -260,6 +260,7 @@ export const registrarUsuario = async (
   nome: string,
   email: string,
   telefone: string,
+  cpf: string,
   senha: string,
   role: Role
 ): Promise<Usuario> => {
@@ -270,6 +271,7 @@ export const registrarUsuario = async (
     nome,
     email,
     telefone,
+    cpf,
     senhaHash,
     role
   };
