@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { Box, Card, CardContent, Grid, Stack, Typography, Chip, Divider, Avatar, LinearProgress } from '@mui/material';
 import { RequireAdmin } from '@/components/ProtectedRoute';
 import { useVisitas } from '@/contexts/VisitasContext';
-import { UsuarioPublico, Visita } from '@/types/models';
+import { UsuarioPublico } from '@/types/models';
+import { Avatar, Box, Card, CardContent, Chip, Divider, Grid, LinearProgress, Stack, Typography, Button, Pagination } from '@mui/material';
+import DownloadIcon from '@mui/icons-material/Download';
+import { useEffect, useMemo, useState } from 'react';
 
 type UserStats = {
   usuario: UsuarioPublico;
@@ -57,7 +58,10 @@ export default function AdminDashboardPage() {
     });
   }, [usuarios, visitas]);
 
-  const topUsuarios = [...userStats].sort((a, b) => b.participacoes - a.participacoes).slice(0, 5);
+  const topUsuariosOrdenados = useMemo(
+    () => [...userStats].sort((a, b) => b.participacoes - a.participacoes),
+    [userStats]
+  );
   const topVisitas = [...visitas].sort((a, b) => b.inscritosIds.length - a.inscritosIds.length).slice(0, 5);
 
   const hospitalStats = useMemo(() => {
@@ -86,12 +90,71 @@ export default function AdminDashboardPage() {
   );
   const cancelamentosRecentes = cancelamentos.slice(0, 6);
 
+  const formatCpf = (digits: string) => {
+    const clean = digits.replace(/\D/g, '');
+    if (clean.length === 11) {
+      return clean.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    }
+    return digits;
+  };
+
+  const formatTelefone = (digits: string) => {
+    const clean = digits.replace(/\D/g, '');
+    if (clean.length === 11) return clean.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+    if (clean.length === 10) return clean.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+    return digits;
+  };
+
+  const [paginaVoluntarios, setPaginaVoluntarios] = useState(1);
+  const itensPorPagina = 5;
+  const totalPaginas = Math.max(1, Math.ceil(topUsuariosOrdenados.length / itensPorPagina));
+  const topUsuarios = topUsuariosOrdenados.slice((paginaVoluntarios - 1) * itensPorPagina, paginaVoluntarios * itensPorPagina);
+
+  useEffect(() => {
+    if (paginaVoluntarios > totalPaginas) setPaginaVoluntarios(1);
+  }, [totalPaginas, paginaVoluntarios]);
+
+  const handleExportUsuarios = () => {
+    const header = ['Nome', 'Email', 'Telefone', 'CPF'];
+    const rows = usuarios.map((u) => [
+      u.nome,
+      u.email,
+      formatTelefone(u.telefone || ''),
+      formatCpf(u.cpf || '')
+    ]);
+    const csv = [header, ...rows]
+      .map((cols) => cols.map((c) => `"${(c ?? '').replace(/"/g, '""')}"`).join(';'))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'usuarios.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <RequireAdmin>
       <Stack spacing={3}>
-        <Stack direction="row" spacing={1} alignItems="center">
-          <Typography variant="h4">Dashboard administrativo</Typography>
-          <Chip label="Trupe Os Cheios de Graça" color="primary" />
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1}
+          alignItems={{ xs: 'flex-start', sm: 'center' }}
+          justifyContent="space-between"
+        >
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography variant="h4">Dashboard administrativo</Typography>
+            <Chip label="Trupe Os Cheios de Graça" color="primary" />
+          </Stack>
+          <Button
+            variant="outlined"
+            startIcon={<DownloadIcon />}
+            onClick={handleExportUsuarios}
+            disabled={usuarios.length === 0}
+          >
+            Exportar usuarios (Excel)
+          </Button>
         </Stack>
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6} md={3}>
@@ -154,7 +217,8 @@ export default function AdminDashboardPage() {
                       <Stack flex={1}>
                         <Typography fontWeight={600}>{stat.usuario.nome}</Typography>
                         <Typography variant="body2" color="text.secondary">
-                          WhatsApp: {stat.usuario.telefone || 'não informado'}
+                          WhatsApp: {stat.usuario.telefone || 'não informado'} <br />
+                          CPF: {stat.usuario.cpf || 'não informado'}
                         </Typography>
                         <LinearProgress
                           variant="determinate"
@@ -166,6 +230,19 @@ export default function AdminDashboardPage() {
                     </Stack>
                   ))}
                 </Stack>
+                {topUsuariosOrdenados.length > itensPorPagina && (
+                  <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
+                    <Pagination
+                      count={totalPaginas}
+                      page={paginaVoluntarios}
+                      onChange={(_, page) => setPaginaVoluntarios(page)}
+                      size="small"
+                      color="primary"
+                      showFirstButton
+                      showLastButton
+                    />
+                  </Box>
+                )}
               </CardContent>
             </Card>
           </Grid>

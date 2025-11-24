@@ -80,7 +80,7 @@ export const ensureAdmin = (usuario: Usuario | null) => {
   }
 };
 
-export const registerUser = async (nome: string, email: string, telefone: string, senha: string) => {
+export const registerUser = async (nome: string, email: string, telefone: string, cpf: string, senha: string) => {
   const emailLower = email.trim().toLowerCase();
   const db = await readDb();
   pruneExpiredSessions(db);
@@ -93,6 +93,12 @@ export const registerUser = async (nome: string, email: string, telefone: string
   const telefoneDigits = telefone.replace(/\D/g, '');
   if (!telefoneDigits) return { ok: false, erro: 'Informe telefone valido.' };
   if (telefoneDigits.length > 11) return { ok: false, erro: 'Telefone deve ter no maximo 11 digitos.' };
+  const cpfDigits = cpf.replace(/\D/g, '');
+  if (!cpfDigits) return { ok: false, erro: 'Informe CPF valido.' };
+  if (cpfDigits.length !== 11) {
+    return { ok: false, erro: 'CPF deve ter 11 digitos.' };
+  }
+  if (db.usuarios.some((u) => u.cpf === cpfDigits)) return { ok: false, erro: 'CPF ja cadastrado.' };
 
   const senhaHash = await hashPassword(senha);
   const novo: Usuario = {
@@ -100,12 +106,12 @@ export const registerUser = async (nome: string, email: string, telefone: string
     nome: nome.trim(),
     email: emailLower,
     telefone: telefoneDigits,
+    cpf: cpfDigits,
     senhaHash,
     role: emailLower === ADMIN_EMAIL.toLowerCase() ? 'admin' : 'voluntario'
   };
   db.usuarios.push(novo);
   await writeDb(db);
-  await setSession(novo.id);
   return { ok: true, usuario: removeSensitiveUser(novo) };
 };
 

@@ -15,6 +15,11 @@ export const VisitCard = ({ visita }: Props) => {
   const { usuario } = useAuth();
   const { inscrever, removerInscricao } = useVisitas();
   const router = useRouter();
+  const formatDate = (dateIso: string) => {
+    const [year, month, day] = dateIso.split('-');
+    if (day && month && year) return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
+    return dateIso;
+  };
   const [motivoCancelamento, setMotivoCancelamento] = useState('');
   const [dialogAberto, setDialogAberto] = useState(false);
   const [erroMotivo, setErroMotivo] = useState('');
@@ -56,8 +61,8 @@ export const VisitCard = ({ visita }: Props) => {
   const statusColor = visita.status === 'cancelada' ? 'default' : lotado ? 'warning' : 'success';
 
   return (
-    <Card>
-      <CardContent>
+    <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <CardContent sx={{ flexGrow: 1 }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
           <Typography variant="h6">{visita.titulo}</Typography>
           <Chip label={statusLabel} color={statusColor} />
@@ -70,7 +75,7 @@ export const VisitCard = ({ visita }: Props) => {
             {visita.descricao}
           </Typography>
         )}
-        <Typography sx={{ mt: 1 }}>Data: {visita.data}</Typography>
+        <Typography sx={{ mt: 1 }}>Data: {formatDate(visita.data)}</Typography>
         <Typography>Horario: {visita.hora}</Typography>
         <Typography sx={{ mt: 1 }}>
           Vagas: {visita.inscritosIds.length}/{visita.limiteVagas} vagas

@@ -10,15 +10,22 @@ export async function POST(req: Request) {
   const nome = body?.nome as string | undefined;
   const email = body?.email as string | undefined;
   const telefone = body?.telefone as string | undefined;
+  const cpf = body?.cpf as string | undefined;
   const senha = body?.senha as string | undefined;
 
-  if (!nome || !email || !senha || !telefone) {
-    console.warn('[auth/register] dados invalidos', { nome: !!nome, email: !!email, senha: !!senha, telefone: !!telefone });
+  if (!nome || !email || !senha || !telefone || !cpf) {
+    console.warn('[auth/register] dados invalidos', {
+      nome: !!nome,
+      email: !!email,
+      senha: !!senha,
+      telefone: !!telefone,
+      cpf: !!cpf
+    });
     return NextResponse.json({ error: 'Dados invalidos' }, { status: 400 });
   }
 
   try {
-    const result = await registerUser(nome, email, telefone, senha);
+    const result = await registerUser(nome, email, telefone, cpf, senha);
     if (!result.ok) {
       console.warn('[auth/register] falha negocio', result.erro);
       return NextResponse.json({ error: result.erro ?? 'Nao foi possivel registrar.' }, { status: 400 });

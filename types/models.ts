@@ -5,6 +5,7 @@ export type Usuario = {
   nome: string;
   email: string;
   telefone: string;
+  cpf: string;
   senhaHash: string;
   role: Role;
 };

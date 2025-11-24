@@ -7,7 +7,13 @@ export type AuthContextType = {
   usuario: UsuarioPublico | null;
   carregando: boolean;
   login: (email: string, senha: string) => Promise<{ ok: boolean; erro?: string }>;
-  registrar: (nome: string, email: string, telefone: string, senha: string) => Promise<{ ok: boolean; erro?: string }>;
+  registrar: (
+    nome: string,
+    email: string,
+    telefone: string,
+    cpf: string,
+    senha: string
+  ) => Promise<{ ok: boolean; erro?: string; usuario?: UsuarioPublico }>;
   solicitarReset: (email: string) => Promise<{ ok: boolean; erro?: string; token?: string }>;
   resetarSenha: (email: string, token: string, novaSenha: string) => Promise<{ ok: boolean; erro?: string }>;
   logout: () => Promise<void>;
@@ -51,21 +57,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         body: JSON.stringify({ email, senha })
       });
       setUsuario(data.usuario);
-      return { ok: true };
+      return { ok: true, usuario: data.usuario };
     } catch (error) {
       return { ok: false, erro: (error as Error).message };
     }
   };
 
-  const registrar = async (nome: string, email: string, telefone: string, senha: string) => {
+  const registrar = async (nome: string, email: string, telefone: string, cpf: string, senha: string) => {
     try {
       const data = await fetchJson<{ ok: boolean; usuario: UsuarioPublico }>('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nome, email, telefone, senha })
+        body: JSON.stringify({ nome, email, telefone, cpf, senha })
       });
-      setUsuario(data.usuario);
-      return { ok: true };
+      return { ok: true, usuario: data.usuario };
     } catch (error) {
       return { ok: false, erro: (error as Error).message };
     }

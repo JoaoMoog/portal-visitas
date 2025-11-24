@@ -22,6 +22,17 @@ export default function HomePage() {
     });
   }, [visitas, filtroHospital, filtroData]);
 
+  const visitasOrdenadas = useMemo(() => {
+    return [...visitasFiltradas].sort((a, b) => {
+      const da = new Date(a.data).getTime();
+      const db = new Date(b.data).getTime();
+      if (isNaN(da) && isNaN(db)) return 0;
+      if (isNaN(da)) return 1;
+      if (isNaN(db)) return -1;
+      return da - db;
+    });
+  }, [visitasFiltradas]);
+
   return (
     <RequireAuth>
       <Stack spacing={3}>
@@ -50,12 +61,12 @@ export default function HomePage() {
             fullWidth
           />
         </Stack>
-        {visitasFiltradas.length === 0 ? (
+            {visitasFiltradas.length === 0 ? (
           <Alert severity="info">Nenhuma visita encontrada.</Alert>
         ) : (
-          <Grid container spacing={2}>
-            {visitasFiltradas.map((visita) => (
-              <Grid item xs={12} sm={6} md={4} key={visita.id}>
+          <Grid container spacing={2} alignItems="stretch">
+            {visitasOrdenadas.map((visita) => (
+              <Grid item xs={12} sm={6} md={4} key={visita.id} sx={{ display: 'flex' }}>
                 <VisitCard visita={visita} />
               </Grid>
             ))}
