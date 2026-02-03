@@ -21,6 +21,7 @@ const defaultVisitas: Visita[] = [
   {
     id: 'v1',
     titulo: 'Visita - Pediatria',
+    hospitalId: 'h1',
     hospital: 'Hospital Central',
     descricao: 'Apoio e recreacao para criancas internadas.',
     data: '2024-09-10',
@@ -33,6 +34,7 @@ const defaultVisitas: Visita[] = [
   {
     id: 'v2',
     titulo: 'Visita - Oncologia',
+    hospitalId: 'h2',
     hospital: 'Hospital Vida',
     descricao: 'Conversa e leitura para pacientes oncologicos.',
     data: '2024-09-12',
@@ -45,6 +47,7 @@ const defaultVisitas: Visita[] = [
   {
     id: 'v3',
     titulo: 'Visita - Geriatria',
+    hospitalId: 'h3',
     hospital: 'Hospital Esperanca',
     descricao: 'Companhia e atividades ludicas para idosos.',
     data: '2024-09-15',
@@ -57,6 +60,7 @@ const defaultVisitas: Visita[] = [
   {
     id: 'v4',
     titulo: 'Visita - Maternidade',
+    hospitalId: 'h1',
     hospital: 'Hospital Central',
     descricao: 'Apoio a maes e recem-nascidos.',
     data: '2024-09-20',
@@ -73,6 +77,7 @@ const isBrowser = () => typeof window !== 'undefined';
 const normalizeVisita = (visita: Visita | (Partial<Visita> & { id: string })): Visita => ({
   id: visita.id,
   titulo: visita.titulo ?? '',
+  hospitalId: visita.hospitalId ?? '',
   hospital: visita.hospital ?? '',
   descricao: visita.descricao,
   data: visita.data ?? '',
@@ -81,7 +86,8 @@ const normalizeVisita = (visita: Visita | (Partial<Visita> & { id: string })): V
   cancelamentos: visita.cancelamentos ?? [],
   inscritosIds: visita.inscritosIds ?? [],
   status: visita.status ?? 'ativa',
-  recorrencia: visita.recorrencia
+  recorrencia: visita.recorrencia,
+  fotografoId: visita.fotografoId
 });
 
 const getItem = <T,>(key: string): T | null => {
