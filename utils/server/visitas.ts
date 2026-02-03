@@ -8,6 +8,7 @@ import { Visita, VisitaInput } from '@/types/models';
 const normalizeVisita = (input: VisitaInput): Visita => ({
   id: input.id ?? crypto.randomUUID(),
   titulo: input.titulo ?? '',
+  hospitalId: input.hospitalId ?? '',
   hospital: input.hospital ?? '',
   descricao: input.descricao,
   data: input.data ?? '',
