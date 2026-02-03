@@ -1,5 +1,5 @@
 import { createClient } from '@vercel/edge-config';
-import { Usuario, Visita } from '@/types/models';
+import { Usuario, Visita, Hospital } from '@/types/models';
 
 export type Session = {
   id: string;
@@ -18,6 +18,7 @@ export type DbSchema = {
   visitas: Visita[];
   sessions: Session[];
   resetTokens: ResetToken[];
+  hospitais: Hospital[];
 };
 
 const EDGE_CONFIG_CONNECTION = process.env.EDGE_CONFIG || process.env.EDGE_CONFIG;
@@ -38,10 +39,28 @@ const rawEdgeKey = process.env.EDGE_CONFIG_KEY ?? 'portal_visitas_db';
 const EDGE_CONFIG_KEY = rawEdgeKey.replace(/[^A-Za-z0-9_-]/g, '_');
 const edgeClient = createClient(EDGE_CONFIG_CONNECTION);
 
+const defaultHospitais: Hospital[] = [
+  {
+    id: 'h1',
+    nome: 'Hospital Central',
+    estado: 'RJ',
+    endereco: 'Centro, Rio de Janeiro',
+    fotografosIds: []
+  },
+  {
+    id: 'h2',
+    nome: 'Hospital Santa Casa',
+    estado: 'SP',
+    endereco: 'Centro, São Paulo',
+    fotografosIds: []
+  }
+];
+
 const defaultVisitas: Visita[] = [
   {
     id: 'v1',
     titulo: 'Visita - Pediatria',
+    hospitalId: 'h1',
     hospital: 'Hospital Central',
     descricao: 'Apoio e recreacao para criancas internadas.',
     data: '2025-09-10',
@@ -58,7 +77,8 @@ const buildDefaultDb = async (): Promise<DbSchema> => {
     usuarios: [],
     visitas: defaultVisitas,
     sessions: [],
-    resetTokens: []
+    resetTokens: [],
+    hospitais: defaultHospitais
   };
 };
 

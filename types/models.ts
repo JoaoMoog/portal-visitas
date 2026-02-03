@@ -1,5 +1,15 @@
 export type Role = 'admin' | 'voluntario';
 
+export type Estado = 'RJ' | 'SP';
+
+export type Hospital = {
+  id: string;
+  nome: string;
+  estado: Estado;
+  endereco?: string;
+  fotografosIds: string[]; // usuários habilitados como fotógrafos neste hospital
+};
+
 export type Usuario = {
   id: string;
   nome: string;
@@ -23,12 +33,14 @@ export type CancelamentoInscricao = {
 export type Visita = {
   id: string;
   titulo: string;
-  hospital: string;
+  hospitalId: string; // referência ao hospital
+  hospital: string; // nome do hospital (para retrocompatibilidade)
   descricao?: string;
   data: string;
   hora: string;
   limiteVagas: number;
   inscritosIds: string[];
+  fotografoId?: string; // usuário inscrito como fotógrafo (máximo 1 por visita)
   status: VisitaStatus;
   cancelamentos: CancelamentoInscricao[];
   recorrencia?: {
@@ -38,4 +50,4 @@ export type Visita = {
   };
 };
 
-export type VisitaInput = Omit<Visita, 'id' | 'inscritosIds' | 'status' | 'cancelamentos'> & { id?: string };
+export type VisitaInput = Omit<Visita, 'id' | 'inscritosIds' | 'status' | 'cancelamentos' | 'fotografoId'> & { id?: string };

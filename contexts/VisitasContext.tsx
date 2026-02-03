@@ -12,6 +12,8 @@ export type VisitasContextType = {
   deletarVisita: (id: string) => Promise<void>;
   inscrever: (visitaId: string) => Promise<{ ok: boolean; erro?: string }>;
   removerInscricao: (visitaId: string, motivo: string) => Promise<{ ok: boolean; erro?: string }>;
+  inscreverFotografo: (visitaId: string) => Promise<{ ok: boolean; erro?: string }>;
+  removerFotografo: (visitaId: string) => Promise<{ ok: boolean; erro?: string }>;
 };
 
 const VisitasContext = createContext<VisitasContextType | undefined>(undefined);
@@ -108,6 +110,26 @@ export const VisitasProvider = ({ children }: { children: React.ReactNode }) => 
     }
   };
 
+  const inscreverFotografo = async (visitaId: string) => {
+    try {
+      const data = await fetchJson<{ visita: Visita }>(`/api/visitas/${visitaId}/fotografo`, { method: 'POST' });
+      setVisitas(prev => prev.map(v => v.id === visitaId ? data.visita : v));
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, erro: (error as Error).message };
+    }
+  };
+
+  const removerFotografo = async (visitaId: string) => {
+    try {
+      const data = await fetchJson<{ visita: Visita }>(`/api/visitas/${visitaId}/fotografo`, { method: 'DELETE' });
+      setVisitas(prev => prev.map(v => v.id === visitaId ? data.visita : v));
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, erro: (error as Error).message };
+    }
+  };
+
   const value = useMemo(
     () => ({
       visitas,
@@ -117,7 +139,9 @@ export const VisitasProvider = ({ children }: { children: React.ReactNode }) => 
       cancelarVisita,
       deletarVisita,
       inscrever,
-      removerInscricao
+      removerInscricao,
+      inscreverFotografo,
+      removerFotografo
     }),
     [visitas]
   );
